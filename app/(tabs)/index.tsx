@@ -1,98 +1,144 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { useAuthStore } from '../../store/authStore';
+import { startLocationTracking, stopLocationTracking } from '../../services/locationTask';
+import * as Location from 'expo-location';
+import { BACKGROUND_LOCATION_TASK } from '../../services/locationTask';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { driver, logout } = useAuthStore();
+  const [isOnline, setIsOnline] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    // Check if tracking is currently active when component mounts
+    const checkStatus = async () => {
+      if (Platform.OS === 'web') {
+        setIsOnline(false);
+        return;
+      }
+      const hasStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+      setIsOnline(hasStarted);
+    };
+    checkStatus();
+  }, []);
+
+  const toggleOnlineStatus = async () => {
+    try {
+      if (isOnline) {
+        await stopLocationTracking();
+        setIsOnline(false);
+      } else {
+        await startLocationTracking();
+        const hasStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+        setIsOnline(hasStarted);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to change online status.');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Dispatch Dashboard</Text>
+        <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.profileCard}>
+        <Text style={styles.label}>Driver Name:</Text>
+        <Text style={styles.value}>{driver?.name || 'Unknown'}</Text>
+
+        <Text style={styles.label}>Callsign:</Text>
+        <Text style={styles.value}>{driver?.callsign || 'Unknown'}</Text>
+      </View>
+
+      <View style={styles.statusContainer}>
+        <Text style={styles.statusLabel}>Current Status:</Text>
+        <Text style={[styles.statusText, { color: isOnline ? '#10b981' : '#6b7280' }]}>
+          {isOnline ? 'ONLINE & TRACKING' : 'OFFLINE'}
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.toggleButton, { backgroundColor: isOnline ? '#ef4444' : '#10b981' }]}
+        onPress={toggleOnlineStatus}
+      >
+        <Text style={styles.toggleButtonText}>
+          {isOnline ? 'Go Offline' : 'Go Online'}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#111827',
+    padding: 24,
+    paddingTop: 60,
   },
-  stepContainer: {
-    gap: 8,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#f9fafb',
+  },
+  logoutButton: {
+    padding: 8,
+    backgroundColor: '#374151',
+    borderRadius: 8,
+  },
+  logoutText: {
+    color: '#f3f4f6',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  profileCard: {
+    backgroundColor: '#1f2937',
+    padding: 24,
+    borderRadius: 12,
+    marginBottom: 32,
+  },
+  label: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginBottom: 4,
+  },
+  value: {
+    fontSize: 18,
+    color: '#f9fafb',
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  statusContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  statusLabel: {
+    fontSize: 16,
+    color: '#d1d5db',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  statusText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  toggleButton: {
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  toggleButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
