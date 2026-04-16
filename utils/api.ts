@@ -5,13 +5,16 @@ import { Platform } from 'react-native';
 // For local testing on iOS simulator, localhost works. For Android emulator, use 10.0.2.2.
 // In production, this should be the deployed Next.js backend URL.
 const getBaseUrl = () => {
+    if (process.env.EXPO_PUBLIC_API_URL) {
+        return process.env.EXPO_PUBLIC_API_URL;
+    }
     if (__DEV__) {
         if (Platform.OS === 'android') {
             return 'http://10.0.2.2:3000';
         }
         return 'http://localhost:3000';
     }
-    return 'https://classy-boba-138f99.netlify.app'; // Or the Vercel URL
+    return 'https://app.cabai.co.uk';
 };
 
 export const api = axios.create({
