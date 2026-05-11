@@ -10,13 +10,15 @@ export interface PushNotificationState {
 }
 
 export const usePushNotifications = (): PushNotificationState => {
-    Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldPlaySound: true,
-            shouldShowAlert: true,
-            shouldSetBadge: false, // Badge counts require additional setup outside scope
-        }),
-    });
+    if (Notifications.setNotificationHandler) {
+        Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+                shouldPlaySound: true,
+                shouldShowAlert: true,
+                shouldSetBadge: false, // Badge counts require additional setup outside scope
+            }),
+        });
+    }
 
     const [expoPushToken, setExpoPushToken] = useState<
         Notifications.ExpoPushToken | undefined
@@ -38,6 +40,11 @@ export const usePushNotifications = (): PushNotificationState => {
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: '#FF231F7C',
             });
+        }
+
+        if (!Notifications.getPermissionsAsync) {
+            console.log('Push notifications are not supported in Expo Go on SDK 53+');
+            return undefined;
         }
 
         if (Device.isDevice) {
@@ -91,11 +98,11 @@ export const usePushNotifications = (): PushNotificationState => {
         );
 
         return () => {
-            if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(notificationListener.current);
+            if (notificationListener.current && notificationListener.current.remove) {
+                notificationListener.current.remove();
             }
-            if (responseListener.current) {
-                Notifications.removeNotificationSubscription(responseListener.current);
+            if (responseListener.current && responseListener.current.remove) {
+                responseListener.current.remove();
             }
         };
     }, []);

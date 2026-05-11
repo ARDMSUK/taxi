@@ -5,25 +5,31 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#00E676'; // Neon green accent
+const tintColorDark = '#00E676'; // Neon green accent
 
 export const Colors = {
   light: {
     text: '#11181C',
-    background: '#fff',
+    background: '#F5F7F9',
+    card: '#FFFFFF',
+    border: '#E2E8F0',
     tint: tintColorLight,
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    danger: '#FF3B30',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#FFFFFF',
+    background: '#09090B', // Very dark for premium OLED feel
+    card: '#18181B', // Slightly lighter for cards
+    border: '#27272A',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#A1A1AA',
+    tabIconDefault: '#A1A1AA',
     tabIconSelected: tintColorDark,
+    danger: '#EF4444',
   },
 };
 

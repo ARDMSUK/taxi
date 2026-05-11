@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Linking, Platform, Alert } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../utils/api';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 interface Job {
     id: string;
@@ -22,29 +25,17 @@ export default function JobsScreen() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<'MY_JOBS' | 'COMPLETED'>('MY_JOBS');
+    
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'dark'];
 
     const fetchJobs = useCallback(async () => {
         try {
-            // In a real app we'd query /api/drivers/me/jobs
             const { data } = await api.get('/api/driver/me/jobs');
             setJobs(data);
         } catch (error) {
             console.error('Failed to fetch jobs:', error);
-            // Fallback dummy data if endpoint isn't ready
-            setJobs([
-                {
-                    id: 'job-123',
-                    status: 'DISPATCHED',
-                    pickupTime: new Date().toISOString(),
-                    pickupAddress: 'London Heathrow Airport (LHR)',
-                    pickupLat: 51.4694,
-                    pickupLng: -0.4500,
-                    dropoffAddress: 'London Eye, Riverside Building',
-                    price: 45.00,
-                    customerName: 'John Doe',
-                    customerPhone: '+44 7700 900077'
-                }
-            ]);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -62,7 +53,6 @@ export default function JobsScreen() {
 
     const openNavigation = (lat?: number, lng?: number, address?: string) => {
         if (!lat || !lng) {
-            // Fallback to address search if coords are missing
             const url = Platform.select({
                 ios: `maps:0,0?q=${encodeURIComponent(address || '')}`,
                 android: `geo:0,0?q=${encodeURIComponent(address || '')}`,
@@ -72,7 +62,6 @@ export default function JobsScreen() {
             return;
         }
 
-        // Attempt to open Waze, fallback to Google Maps
         const wazeUrl = `waze://?ll=${lat},${lng}&navigate=yes`;
         const googleMapsUrl = Platform.select({
             ios: `comgooglemaps://?q=${lat},${lng}`,
@@ -92,122 +81,151 @@ export default function JobsScreen() {
     const triggerSOS = async (jobId: string) => {
         try {
             await api.post(`/api/jobs/${jobId}/sos`, { source: 'DRIVER' });
-            Alert.alert("SOS Triggered", "Emergency resources and the dispatcher have been notified of your location.");
+            Alert.alert("SOS Triggered", "Emergency resources and the dispatcher have been notified.");
         } catch (e) {
-            Alert.alert("Error", "Failed to trigger SOS. Call emergency services directly if in immediate danger.");
+            Alert.alert("Error", "Failed to trigger SOS.");
         }
     };
 
-    const updateJobStatus = async (jobId: string, locationStage: 'ARRIVED' | 'POB' | 'CLEARED') => {
-        // Call your backend API here
-        console.log(`Updating job ${jobId} to ${locationStage}`);
-
-        // Optimistic update
-        setJobs(jobs.map(j => {
-            if (j.id === jobId) {
-                return { ...j, status: locationStage };
-            }
-            return j;
-        }));
+    const updateJobStatus = async (jobId: string, locationStage: string) => {
+        try {
+            setJobs(jobs.map(j => {
+                if (String(j.id) === String(jobId)) {
+                    return { ...j, status: locationStage };
+                }
+                return j;
+            }));
+            await api.patch(`/api/mobile/driver/jobs/${jobId}/status`, { status: locationStage });
+        } catch (error) {
+            console.error('Failed to update job status:', error);
+            Alert.alert('Error', 'Failed to update job status on the server.');
+            fetchJobs();
+        }
     };
+
+    const filteredJobs = jobs.filter(job => {
+        if (activeTab === 'MY_JOBS') {
+            return job.status !== 'COMPLETED' && job.status !== 'CLEARED' && job.status !== 'CANCELLED';
+        } else {
+            return job.status === 'COMPLETED' || job.status === 'CLEARED';
+        }
+    });
 
     const renderJobCard = ({ item }: { item: Job }) => {
         return (
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <View style={styles.cardHeader}>
-                    <Text style={styles.jobId}>Job #{item.id.slice(-4).toUpperCase()}</Text>
+                    <Text style={[styles.jobId, { color: theme.text }]}>Job #{String(item.id).slice(-4).toUpperCase()}</Text>
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        <TouchableOpacity style={styles.sosButton} onPress={() => triggerSOS(item.id)}>
-                            <Text style={styles.sosText}>SOS</Text>
-                        </TouchableOpacity>
-                        <Text style={[styles.statusBadge, styles[`status${item.status}` as keyof typeof styles]]}>
-                            {item.status}
-                        </Text>
+                        {item.status !== 'COMPLETED' && item.status !== 'CLEARED' && (
+                            <TouchableOpacity style={[styles.sosButton, { backgroundColor: theme.danger + '20' }]} onPress={() => triggerSOS(item.id)}>
+                                <Text style={[styles.sosText, { color: theme.danger }]}>SOS</Text>
+                            </TouchableOpacity>
+                        )}
+                        <View style={[styles.statusBadge, { backgroundColor: theme.tint + '20' }]}>
+                            <Text style={{ color: theme.tint, fontWeight: '800', fontSize: 12 }}>{item.status}</Text>
+                        </View>
                     </View>
                 </View>
 
                 <View style={styles.jobDetails}>
                     <View style={styles.locationRow}>
-                        <View style={styles.dot} />
-                        <Text style={styles.addressText}>{item.pickupAddress}</Text>
+                        <View style={[styles.dot, { backgroundColor: theme.tint }]} />
+                        <Text style={[styles.addressText, { color: theme.text }]}>{item.pickupAddress}</Text>
                     </View>
-                    <View style={styles.line} />
+                    <View style={[styles.line, { backgroundColor: theme.border }]} />
                     <View style={styles.locationRow}>
-                        <View style={[styles.dot, styles.dropoffDot]} />
-                        <Text style={styles.addressText}>{item.dropoffAddress}</Text>
+                        <View style={[styles.dot, { backgroundColor: theme.danger }]} />
+                        <Text style={[styles.addressText, { color: theme.text }]}>{item.dropoffAddress}</Text>
                     </View>
-                    {item.requiresWav && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingHorizontal: 4 }}>
-                            <Text style={{ fontSize: 18, marginRight: 8 }}>♿</Text>
-                            <Text style={{ color: '#60a5fa', fontWeight: 'bold' }}>Wheelchair Accessible Vehicle Required</Text>
-                        </View>
-                    )}
                 </View>
 
-                <View style={styles.priceRow}>
-                    <Text style={styles.priceText}>£{item.price.toFixed(2)}</Text>
-                    <Text style={styles.timeText}>{new Date(item.pickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                <View style={[styles.priceRow, { borderTopColor: theme.border }]}>
+                    <Text style={[styles.priceText, { color: theme.tint }]}>£{item.price.toFixed(2)}</Text>
+                    <Text style={[styles.timeText, { color: theme.icon }]}>{new Date(item.pickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
 
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                        style={[styles.button, styles.primaryButton]}
-                        onPress={() => openNavigation(item.pickupLat, item.pickupLng, item.pickupAddress)}
-                    >
-                        <Text style={styles.buttonText}>Navigate</Text>
-                    </TouchableOpacity>
+                {item.status !== 'COMPLETED' && item.status !== 'CLEARED' && (
+                    <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                            style={[styles.button, { backgroundColor: '#3b82f6' }]}
+                            onPress={() => openNavigation(item.pickupLat, item.pickupLng, item.pickupAddress)}
+                        >
+                            <Text style={styles.buttonText}>Navigate</Text>
+                        </TouchableOpacity>
 
-                    {item.status === 'DISPATCHED' && (
-                        <TouchableOpacity
-                            style={[styles.button, styles.actionBtn]}
-                            onPress={() => updateJobStatus(item.id, 'ARRIVED')}
-                        >
-                            <Text style={styles.actionBtnText}>Arrived</Text>
-                        </TouchableOpacity>
-                    )}
-                    {item.status === 'ARRIVED' && (
-                        <TouchableOpacity
-                            style={[styles.button, styles.actionBtn]}
-                            onPress={() => updateJobStatus(item.id, 'POB')}
-                        >
-                            <Text style={styles.actionBtnText}>Passenger on Board</Text>
-                        </TouchableOpacity>
-                    )}
-                    {item.status === 'POB' && (
-                        <TouchableOpacity
-                            style={[styles.button, styles.clearBtn]}
-                            onPress={() => updateJobStatus(item.id, 'CLEARED')}
-                        >
-                            <Text style={styles.actionBtnText}>Clear Job</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
+                        {item.status === 'DISPATCHED' && (
+                            <TouchableOpacity
+                                style={[styles.button, { backgroundColor: theme.tint }]}
+                                onPress={() => updateJobStatus(item.id, 'ARRIVED')}
+                            >
+                                <Text style={[styles.buttonText, { color: '#000' }]}>Arrived</Text>
+                            </TouchableOpacity>
+                        )}
+                        {item.status === 'ARRIVED' && (
+                            <TouchableOpacity
+                                style={[styles.button, { backgroundColor: theme.tint }]}
+                                onPress={() => updateJobStatus(item.id, 'POB')}
+                            >
+                                <Text style={[styles.buttonText, { color: '#000' }]}>Passenger on Board</Text>
+                            </TouchableOpacity>
+                        )}
+                        {item.status === 'POB' && (
+                            <TouchableOpacity
+                                style={[styles.button, { backgroundColor: theme.tint }]}
+                                onPress={() => updateJobStatus(item.id, 'CLEARED')}
+                            >
+                                <Text style={[styles.buttonText, { color: '#000' }]}>Clear Job</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
             </View>
         );
     };
 
     if (loading) {
         return (
-            <View style={styles.centerContainer}>
-                <Text style={styles.loadingText}>Loading Jobs...</Text>
+            <View style={[styles.centerContainer, { backgroundColor: theme.background }]}>
+                <Text style={{ color: theme.icon, fontSize: 16 }}>Loading Bookings...</Text>
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.headerTitle}>My Jobs</Text>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <View style={styles.header}>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Bookings</Text>
+                
+                {/* Custom Segmented Control */}
+                <View style={[styles.tabContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <TouchableOpacity 
+                        style={[styles.tabSegment, activeTab === 'MY_JOBS' && { backgroundColor: theme.tint }]} 
+                        onPress={() => setActiveTab('MY_JOBS')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'MY_JOBS' ? { color: '#000', fontWeight: '800' } : { color: theme.icon }]}>My Jobs</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tabSegment, activeTab === 'COMPLETED' && { backgroundColor: theme.tint }]} 
+                        onPress={() => setActiveTab('COMPLETED')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'COMPLETED' ? { color: '#000', fontWeight: '800' } : { color: theme.icon }]}>Completed</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
             <FlatList
-                data={jobs}
+                data={filteredJobs}
                 renderItem={renderJobCard}
-                keyExtractor={item => item.id}
+                keyExtractor={item => String(item.id)}
                 contentContainerStyle={styles.listContainer}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={'#fff'} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />
                 }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No active jobs.</Text>
+                        <IconSymbol name="list.bullet.clipboard" size={48} color={theme.icon} style={{ marginBottom: 12, opacity: 0.5 }} />
+                        <Text style={[styles.emptyText, { color: theme.icon }]}>No {activeTab === 'COMPLETED' ? 'completed' : 'active'} jobs found.</Text>
                     </View>
                 }
             />
@@ -216,158 +234,41 @@ export default function JobsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
+    container: { flex: 1, paddingTop: 60 },
+    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: { paddingHorizontal: 24, marginBottom: 20 },
+    headerTitle: { fontSize: 32, fontWeight: '800', marginBottom: 16 },
+    tabContainer: { 
+        flexDirection: 'row', 
+        borderRadius: 12, 
+        borderWidth: 1,
+        padding: 4 
+    },
+    tabSegment: {
         flex: 1,
-        backgroundColor: '#111827',
-        paddingTop: 60,
-    },
-    centerContainer: {
-        flex: 1,
-        backgroundColor: '#111827',
-        justifyContent: 'center',
+        paddingVertical: 10,
         alignItems: 'center',
+        borderRadius: 8
     },
-    loadingText: {
-        color: '#9ca3af',
-        fontSize: 16,
-    },
-    headerTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#f9fafb',
-        paddingHorizontal: 24,
-        marginBottom: 20,
-    },
-    listContainer: {
-        paddingHorizontal: 24,
-        paddingBottom: 40,
-    },
-    emptyContainer: {
-        padding: 40,
-        alignItems: 'center',
-    },
-    emptyText: {
-        color: '#6b7280',
-        fontSize: 16,
-    },
-    card: {
-        backgroundColor: '#1f2937',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    jobId: {
-        color: '#d1d5db',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#fff',
-        backgroundColor: '#4b5563',
-        overflow: 'hidden',
-    },
-    sosButton: {
-        backgroundColor: '#ef4444',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    sosText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 12
-    },
-    statusDISPATCHED: { backgroundColor: '#3b82f6' },
-    statusARRIVED: { backgroundColor: '#f59e0b' },
-    statusPOB: { backgroundColor: '#8b5cf6' },
-    statusCLEARED: { backgroundColor: '#10b981' },
-    statusPENDING: { backgroundColor: '#6b7280' },
-
-    jobDetails: {
-        marginBottom: 16,
-    },
-    locationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#10b981',
-        marginRight: 12,
-    },
-    dropoffDot: {
-        backgroundColor: '#ef4444',
-    },
-    line: {
-        width: 2,
-        height: 16,
-        backgroundColor: '#374151',
-        marginLeft: 4,
-        marginVertical: 4,
-    },
-    addressText: {
-        color: '#f9fafb',
-        fontSize: 15,
-        flex: 1,
-    },
-    priceRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: '#374151',
-        paddingTop: 16,
-        marginBottom: 16,
-    },
-    priceText: {
-        color: '#10b981',
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    timeText: {
-        color: '#9ca3af',
-        fontSize: 16,
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    button: {
-        flex: 1,
-        padding: 14,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    primaryButton: {
-        backgroundColor: '#3b82f6',
-    },
-    actionBtn: {
-        backgroundColor: '#4b5563',
-    },
-    clearBtn: {
-        backgroundColor: '#10b981',
-    },
-    buttonText: {
-        color: '#ffffff',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    actionBtnText: {
-        color: '#f9fafb',
-        fontSize: 14,
-        fontWeight: 'bold',
-    }
+    tabText: { fontSize: 14, fontWeight: '600' },
+    listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
+    emptyContainer: { padding: 40, alignItems: 'center', justifyContent: 'center', marginTop: 40 },
+    emptyText: { fontSize: 16 },
+    card: { borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    jobId: { fontSize: 16, fontWeight: '800' },
+    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+    sosButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+    sosText: { fontWeight: '800', fontSize: 12 },
+    jobDetails: { marginBottom: 16 },
+    locationRow: { flexDirection: 'row', alignItems: 'center' },
+    dot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
+    line: { width: 2, height: 16, marginLeft: 4, marginVertical: 4 },
+    addressText: { fontSize: 15, flex: 1, fontWeight: '500' },
+    priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 16, marginBottom: 16 },
+    priceText: { fontSize: 24, fontWeight: '800' },
+    timeText: { fontSize: 16, fontWeight: '600' },
+    actionButtons: { flexDirection: 'row', gap: 12 },
+    button: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
+    buttonText: { color: '#ffffff', fontSize: 14, fontWeight: '800' }
 });
