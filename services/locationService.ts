@@ -2,7 +2,6 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 import { api } from '../utils/api'; // Assuming you have an API utility
-import { APP_CONFIG } from '../constants/config'; // Assuming config exists
 
 const LOCATION_TASK_NAME = 'background-location-task';
 

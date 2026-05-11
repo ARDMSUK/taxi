@@ -10,25 +10,25 @@ export interface PushNotificationState {
 }
 
 export const usePushNotifications = (): PushNotificationState => {
-    if (Notifications.setNotificationHandler) {
+    useEffect(() => {
         Notifications.setNotificationHandler({
             handleNotification: async () => ({
                 shouldPlaySound: true,
                 shouldShowAlert: true,
                 shouldSetBadge: false, // Badge counts require additional setup outside scope
+                shouldShowBanner: true,
+                shouldShowList: true,
             }),
         });
-    }
+    }, []);
 
-    const [expoPushToken, setExpoPushToken] = useState<
-        Notifications.ExpoPushToken | undefined
-    >();
+    const [expoPushToken, setExpoPushToken] = useState<Notifications.ExpoPushToken>();
     const [notification, setNotification] = useState<
         Notifications.Notification | undefined
     >();
 
-    const notificationListener = useRef<Notifications.EventSubscription>();
-    const responseListener = useRef<Notifications.EventSubscription>();
+    const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+    const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
     async function registerForPushNotificationsAsync() {
         let token;

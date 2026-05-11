@@ -4,12 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useAuth } from '@/store/auth-context';
+import { useAuthStore } from '../../store/authStore';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'dark'];
-  const { driver, logout } = useAuth();
+  const { driver, logout } = useAuthStore();
   
   // Dummy states for UI demonstration
   const [soundEnabled, setSoundEnabled] = React.useState(true);

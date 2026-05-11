@@ -95,7 +95,7 @@ export default function HomeScreen() {
 
     useEffect(() => {
         fetchActiveJob();
-        let interval: NodeJS.Timeout | null = null;
+        let interval: ReturnType<typeof setInterval> | null = null;
         
         if (isOnline) {
             interval = setInterval(() => {
