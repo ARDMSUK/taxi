@@ -208,14 +208,21 @@ export default function HomeScreen() {
                         <Text style={{ color: theme.icon, fontSize: 14, fontWeight: '600' }}>Zone: {zoneName}</Text>
                     </View>
                 </View>
-                <TouchableOpacity
-                    style={[styles.powerButton, isOnline ? { backgroundColor: theme.tint } : { backgroundColor: theme.border }]}
-                    onPress={toggleOnlineStatus}
-                >
-                    <Text style={[styles.powerText, isOnline ? { color: '#000' } : { color: theme.icon }]}>
-                        {isOnline ? 'ONLINE' : 'OFFLINE'}
-                    </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    {isOnline && activeJob && (
+                        <TouchableOpacity style={styles.headerPanicButton} onPress={triggerPanic}>
+                            <IconSymbol name="exclamationmark.triangle.fill" size={20} color="#ffffff" />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                        style={[styles.powerButton, isOnline ? { backgroundColor: theme.tint } : { backgroundColor: theme.border }]}
+                        onPress={toggleOnlineStatus}
+                    >
+                        <Text style={[styles.powerText, isOnline ? { color: '#000' } : { color: theme.icon }]}>
+                            {isOnline ? 'ONLINE' : 'OFFLINE'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Main Content Area */}
@@ -288,14 +295,6 @@ export default function HomeScreen() {
                                 )}
                             </View>
                             
-                            {/* PANIC BUTTON */}
-                            <TouchableOpacity 
-                                style={[styles.panicButton, { borderColor: theme.danger, backgroundColor: theme.danger + '10' }]} 
-                                onPress={triggerPanic}
-                            >
-                                <IconSymbol name="exclamationmark.triangle.fill" size={24} color={theme.danger} />
-                                <Text style={[styles.panicText, { color: theme.danger }]}>PANIC ALERT</Text>
-                            </TouchableOpacity>
                         </View>
                     ) : (
                         <View style={styles.emptyContainer}>
@@ -404,11 +403,19 @@ const styles = StyleSheet.create({
     actionButtons: { flexDirection: 'row', gap: 12, marginBottom: 20 },
     button: { flex: 1, padding: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
-    panicButton: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
-        padding: 16, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', marginTop: 8
+    headerPanicButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#ef4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#ef4444',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 5,
+        elevation: 6,
     },
-    panicText: { fontSize: 16, fontWeight: '900', letterSpacing: 2 },
     fab: {
         position: 'absolute',
         bottom: 24,

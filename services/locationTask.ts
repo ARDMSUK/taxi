@@ -57,9 +57,15 @@ export const startLocationTracking = async () => {
             }
         } else {
             console.log("Background location permission denied.");
+            import('react-native').then(({ Alert }) => {
+                Alert.alert("Permission Required", "Background location permission is required to receive jobs while the app is minimized.");
+            });
         }
     } else {
         console.log("Foreground location permission denied.");
+        import('react-native').then(({ Alert }) => {
+            Alert.alert("Permission Required", "Location permission is required to go online and receive jobs.");
+        });
     }
 };
 
