@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView, Linking, Image } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 import { startLocationTracking, stopLocationTracking } from '../../services/locationTask';
 import * as Location from 'expo-location';
@@ -201,7 +201,10 @@ export default function HomeScreen() {
             {/* Header */}
             <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
                 <View>
-                    <Text style={[styles.cabaiBrand, { color: theme.tint }]}>CABAI</Text>
+                    <Image 
+                        source={require('../../assets/images/logo.png')} 
+                        style={{ width: 100, height: 28, resizeMode: 'contain' }} 
+                    />
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                         <Text style={[styles.callsign, { color: theme.icon }]}>{driver?.callsign}</Text>
                         <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: theme.icon }} />

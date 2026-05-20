@@ -37,8 +37,9 @@ export const startLocationTracking = async () => {
 
     const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
     if (foregroundStatus === 'granted') {
-        const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-        if (backgroundStatus === 'granted') {
+        const { status: currentBgStatus } = await Location.getBackgroundPermissionsAsync();
+        
+        const startTracking = async () => {
             const hasStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
             if (!hasStarted) {
                 await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
@@ -55,11 +56,31 @@ export const startLocationTracking = async () => {
                 });
                 console.log("Background location tracking started.");
             }
-        } else {
-            console.log("Background location permission denied.");
+        };
+
+        if (currentBgStatus !== 'granted') {
             import('react-native').then(({ Alert }) => {
-                Alert.alert("Permission Required", "Background location permission is required to receive jobs while the app is minimized.");
+                Alert.alert(
+                    "Background Tracking",
+                    "To receive jobs while using other apps, you need to select 'Allow Always' on the next prompt.",
+                    [
+                        {
+                            text: "Continue",
+                            onPress: async () => {
+                                const { status: newBgStatus } = await Location.requestBackgroundPermissionsAsync();
+                                if (newBgStatus === 'granted') {
+                                    await startTracking();
+                                } else {
+                                    console.log("Background location permission denied.");
+                                    Alert.alert("Permission Required", "Background location permission is required to receive jobs while the app is minimized.");
+                                }
+                            }
+                        }
+                    ]
+                );
             });
+        } else {
+            await startTracking();
         }
     } else {
         console.log("Foreground location permission denied.");

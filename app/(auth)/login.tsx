@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { api } from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
@@ -51,64 +51,69 @@ export default function LoginScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.headerContainer}>
-                <Text style={styles.title}>Dispatch Driver</Text>
-                <Text style={styles.subtitle}>Enter your fleet details to login</Text>
-            </View>
+        <KeyboardAvoidingView 
+            style={{ flex: 1 }} 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+            <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+                <View style={styles.headerContainer}>
+                    <Text style={styles.title}>Dispatch Driver</Text>
+                    <Text style={styles.subtitle}>Enter your fleet details to login</Text>
+                </View>
 
-            <View style={styles.formContainer}>
-                <Text style={styles.label}>Fleet Code</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="e.g. qa-live"
-                    placeholderTextColor="#9ca3af"
-                    autoCapitalize="none"
-                    value={tenantSlug}
-                    onChangeText={setTenantSlug}
-                />
+                <View style={styles.formContainer}>
+                    <Text style={styles.label}>Fleet Code</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. qa-live"
+                        placeholderTextColor="#9ca3af"
+                        autoCapitalize="none"
+                        value={tenantSlug}
+                        onChangeText={setTenantSlug}
+                    />
 
-                <Text style={styles.label}>Callsign</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 101"
-                    placeholderTextColor="#9ca3af"
-                    keyboardType="default"
-                    autoCapitalize="none"
-                    value={callsign}
-                    onChangeText={setCallsign}
-                />
+                    <Text style={styles.label}>Callsign</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 101"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="default"
+                        autoCapitalize="none"
+                        value={callsign}
+                        onChangeText={setCallsign}
+                    />
 
-                <Text style={styles.label}>PIN</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="****"
-                    placeholderTextColor="#9ca3af"
-                    keyboardType="numeric"
-                    secureTextEntry
-                    value={pin}
-                    onChangeText={setPin}
-                />
+                    <Text style={styles.label}>PIN</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="****"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="numeric"
+                        secureTextEntry
+                        value={pin}
+                        onChangeText={setPin}
+                    />
 
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={handleLogin}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.buttonText}>Sign In</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
-        </View>
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={handleLogin}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={styles.buttonText}>Sign In</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        flexGrow: 1,
         backgroundColor: '#111827',
         justifyContent: 'center',
         padding: 24,
