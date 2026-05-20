@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, ScrollView, Platform, Image } from 'react-native';
 import { api } from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
@@ -57,7 +57,8 @@ export default function LoginScreen() {
         >
             <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
                 <View style={styles.headerContainer}>
-                    <Text style={styles.title}>Dispatch Driver</Text>
+                    <Image source={require('../../assets/images/logo.png')} style={{ width: 160, height: 48, resizeMode: 'contain', marginBottom: 16, alignSelf: 'flex-start' }} />
+                    <Text style={styles.title}>Driver Portal</Text>
                     <Text style={styles.subtitle}>Enter your fleet details to login</Text>
                 </View>
 
@@ -104,6 +105,13 @@ export default function LoginScreen() {
                         ) : (
                             <Text style={styles.buttonText}>Sign In</Text>
                         )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={{ marginTop: 24, alignItems: 'center' }}
+                        onPress={() => Alert.alert('Forgot PIN?', 'Please contact your fleet manager or dispatcher base to reset your PIN.')}
+                    >
+                        <Text style={{ color: '#9ca3af', fontSize: 14, fontWeight: '500' }}>Forgot PIN?</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
