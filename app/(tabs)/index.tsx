@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView, Linking, Image } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
+import { useNetworkStore } from '../../store/networkStore';
+import Toast from 'react-native-toast-message';
 import { startLocationTracking, stopLocationTracking } from '../../services/locationTask';
 import * as Location from 'expo-location';
 import { BACKGROUND_LOCATION_TASK } from '../../services/locationTask';
@@ -27,6 +29,7 @@ interface Job {
 export default function HomeScreen() {
     const { driver, logout } = useAuthStore();
     const [isOnline, setIsOnline] = useState(false);
+    const isConnected = useNetworkStore((state) => state.isConnected);
     const [activeJob, setActiveJob] = useState<Job | null>(null);
     const [loading, setLoading] = useState(true);
     const [sound, setSound] = useState<Audio.Sound>();
@@ -109,6 +112,14 @@ export default function HomeScreen() {
     }, [fetchActiveJob, isOnline]);
 
     const toggleOnlineStatus = async () => {
+        if (!isOnline && !isConnected) {
+            Toast.show({
+                type: 'error',
+                text1: 'Offline',
+                text2: 'Cannot go online without an active internet connection.'
+            });
+            return;
+        }
         try {
             if (isOnline) {
                 await stopLocationTracking();
@@ -120,11 +131,23 @@ export default function HomeScreen() {
                 setIsOnline(hasStarted);
             }
         } catch (err) {
-            Alert.alert('Error', 'Failed to change online status.');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to change online status.'
+            });
         }
     };
 
     const updateJobStatus = async (jobId: string, locationStage: string) => {
+        if (!isConnected) {
+            Toast.show({
+                type: 'error',
+                text1: 'Offline',
+                text2: 'Cannot update job status while offline.'
+            });
+            return;
+        }
         try {
             if (activeJob) {
                 if (locationStage === 'UNASSIGNED' || locationStage === 'CLEARED') {
@@ -137,13 +160,25 @@ export default function HomeScreen() {
             fetchActiveJob();
         } catch (error) {
             console.error('Failed to update job status:', error);
-            Alert.alert('Error', 'Failed to update job status on the server.');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to update job status on the server.'
+            });
             fetchActiveJob();
         }
     };
 
     const triggerPanic = async () => {
         if (!activeJob) return;
+        if (!isConnected) {
+            Toast.show({
+                type: 'error',
+                text1: 'Offline',
+                text2: 'Cannot send emergency alert while offline.'
+            });
+            return;
+        }
         Alert.alert(
             "PANIC ALERT",
             "Are you sure you want to trigger a Panic Alert?",
@@ -159,9 +194,17 @@ export default function HomeScreen() {
                                 jobId: parseInt(activeJob.id),
                                 active: true
                             });
-                            Alert.alert("Alert Sent", "Base has been notified immediately.");
+                            Toast.show({
+                                type: 'success',
+                                text1: 'Panic Alert Sent',
+                                text2: 'Base has been notified immediately.'
+                            });
                         } catch (e) {
-                            Alert.alert("Error", "Failed to send panic alert.");
+                            Toast.show({
+                                type: 'error',
+                                text1: 'Error',
+                                text2: 'Failed to send panic alert.'
+                            });
                         }
                     }
                 }
@@ -213,13 +256,24 @@ export default function HomeScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     {isOnline && activeJob && (
-                        <TouchableOpacity style={styles.headerPanicButton} onPress={triggerPanic}>
+                        <TouchableOpacity 
+                            style={styles.headerPanicButton} 
+                            onPress={triggerPanic}
+                            accessible={true}
+                            accessibilityRole="button"
+                            accessibilityLabel="Trigger panic alarm"
+                            accessibilityHint="Alerts the base immediately of an emergency"
+                        >
                             <IconSymbol name="exclamationmark.triangle.fill" size={20} color="#ffffff" />
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity
                         style={[styles.powerButton, isOnline ? { backgroundColor: theme.tint } : { backgroundColor: theme.border }]}
                         onPress={toggleOnlineStatus}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={isOnline ? "Go offline" : "Go online"}
+                        accessibilityHint="Toggles whether you are active to receive new jobs"
                     >
                         <Text style={[styles.powerText, isOnline ? { color: '#000' } : { color: theme.icon }]}>
                             {isOnline ? 'ONLINE' : 'OFFLINE'}
@@ -260,39 +314,93 @@ export default function HomeScreen() {
                             <View style={styles.actionButtons}>
                                 {activeJob.status === 'DISPATCHED' && (
                                     <>
-                                        <TouchableOpacity style={[styles.button, { backgroundColor: theme.danger }]} onPress={() => updateJobStatus(activeJob.id, 'UNASSIGNED')}>
-                                            <Text style={styles.buttonText}>Reject</Text>
+                                        <TouchableOpacity 
+                                            style={[styles.button, { backgroundColor: isConnected ? theme.danger : theme.border }]} 
+                                            onPress={() => updateJobStatus(activeJob.id, 'UNASSIGNED')}
+                                            disabled={!isConnected}
+                                            accessible={true}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Reject job offer"
+                                            accessibilityHint="Decline this job offer and return it to dispatch"
+                                        >
+                                            <Text style={[styles.buttonText, !isConnected && { color: theme.icon }]}>Reject</Text>
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.button, { backgroundColor: theme.tint }]} onPress={() => updateJobStatus(activeJob.id, 'EN_ROUTE')}>
-                                            <Text style={[styles.buttonText, { color: '#000' }]}>Accept Job</Text>
+                                        <TouchableOpacity 
+                                            style={[styles.button, { backgroundColor: isConnected ? theme.tint : theme.border }]} 
+                                            onPress={() => updateJobStatus(activeJob.id, 'EN_ROUTE')}
+                                            disabled={!isConnected}
+                                            accessible={true}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Accept job"
+                                            accessibilityHint="Accept this job and start routing to pickup"
+                                        >
+                                            <Text style={[styles.buttonText, { color: isConnected ? '#000' : theme.icon }]}>Accept Job</Text>
                                         </TouchableOpacity>
                                     </>
                                 )}
                                 
                                 {activeJob.status === 'EN_ROUTE' && (
                                     <>
-                                        <TouchableOpacity style={[styles.button, { backgroundColor: '#3b82f6' }]} onPress={() => openNavigation(activeJob.pickupLat, activeJob.pickupLng, activeJob.pickupAddress)}>
+                                        <TouchableOpacity 
+                                            style={[styles.button, { backgroundColor: '#3b82f6' }]} 
+                                            onPress={() => openNavigation(activeJob.pickupLat, activeJob.pickupLng, activeJob.pickupAddress)}
+                                            accessible={true}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Navigate to pickup"
+                                            accessibilityHint="Opens navigation in Waze or Google Maps"
+                                        >
                                             <Text style={styles.buttonText}>Navigate</Text>
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.button, { backgroundColor: theme.tint }]} onPress={() => updateJobStatus(activeJob.id, 'ARRIVED')}>
-                                            <Text style={[styles.buttonText, { color: '#000' }]}>Arrived</Text>
+                                        <TouchableOpacity 
+                                            style={[styles.button, { backgroundColor: isConnected ? theme.tint : theme.border }]} 
+                                            onPress={() => updateJobStatus(activeJob.id, 'ARRIVED')}
+                                            disabled={!isConnected}
+                                            accessible={true}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Arrived at pickup"
+                                            accessibilityHint="Notify base and passenger that you have arrived"
+                                        >
+                                            <Text style={[styles.buttonText, { color: isConnected ? '#000' : theme.icon }]}>Arrived</Text>
                                         </TouchableOpacity>
                                     </>
                                 )}
 
                                 {activeJob.status === 'ARRIVED' && (
-                                    <TouchableOpacity style={[styles.button, { backgroundColor: theme.tint }]} onPress={() => updateJobStatus(activeJob.id, 'POB')}>
-                                        <Text style={[styles.buttonText, { color: '#000' }]}>Passenger on Board</Text>
+                                    <TouchableOpacity 
+                                        style={[styles.button, { backgroundColor: isConnected ? theme.tint : theme.border }]} 
+                                        onPress={() => updateJobStatus(activeJob.id, 'POB')}
+                                        disabled={!isConnected}
+                                        accessible={true}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Passenger on board"
+                                        accessibilityHint="Confirm passenger has boarded and start routing to destination"
+                                    >
+                                        <Text style={[styles.buttonText, { color: isConnected ? '#000' : theme.icon }]}>Passenger on Board</Text>
                                     </TouchableOpacity>
                                 )}
 
                                 {activeJob.status === 'POB' && (
                                     <>
-                                        <TouchableOpacity style={[styles.button, { backgroundColor: '#3b82f6' }]} onPress={() => openNavigation(undefined, undefined, activeJob.dropoffAddress)}>
+                                        <TouchableOpacity 
+                                            style={[styles.button, { backgroundColor: '#3b82f6' }]} 
+                                            onPress={() => openNavigation(undefined, undefined, activeJob.dropoffAddress)}
+                                            accessible={true}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Navigate to destination"
+                                            accessibilityHint="Opens navigation in Waze or Google Maps"
+                                        >
                                             <Text style={styles.buttonText}>Navigate</Text>
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.button, { backgroundColor: theme.tint }]} onPress={() => updateJobStatus(activeJob.id, 'CLEARED')}>
-                                            <Text style={[styles.buttonText, { color: '#000' }]}>Complete</Text>
+                                        <TouchableOpacity 
+                                            style={[styles.button, { backgroundColor: isConnected ? theme.tint : theme.border }]} 
+                                            onPress={() => updateJobStatus(activeJob.id, 'CLEARED')}
+                                            disabled={!isConnected}
+                                            accessible={true}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Complete ride"
+                                            accessibilityHint="Complete this job and clear your status"
+                                        >
+                                            <Text style={[styles.buttonText, { color: isConnected ? '#000' : theme.icon }]}>Complete</Text>
                                         </TouchableOpacity>
                                     </>
                                 )}
@@ -354,15 +462,32 @@ export default function HomeScreen() {
 }
 
 const sendBaseMessage = async (msg: string) => {
+    const isConnected = useNetworkStore.getState().isConnected;
+    if (!isConnected) {
+        Toast.show({
+            type: 'error',
+            text1: 'Offline',
+            text2: 'Cannot send messages to base while offline.'
+        });
+        return;
+    }
     try {
         await api.post('/api/driver/messages', {
             content: msg,
             sender: 'DRIVER'
         });
-        Alert.alert("Sent", "Message sent to base.");
+        Toast.show({
+            type: 'success',
+            text1: 'Sent',
+            text2: 'Message sent to base.'
+        });
     } catch (error) {
         console.error("Failed to send msg:", error);
-        Alert.alert("Error", "Failed to send message to base.");
+        Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Failed to send message to base.'
+        });
     }
 }
 

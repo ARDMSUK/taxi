@@ -1,19 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
+import { useNetworkStore } from '../store/networkStore';
 
 export default function OfflineBanner() {
-    const [isConnected, setIsConnected] = useState<boolean | null>(true);
+    const isConnected = useNetworkStore((state) => state.isConnected);
 
-    useEffect(() => {
-        const unsubscribe = NetInfo.addEventListener(state => {
-            setIsConnected(state.isConnected);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    if (isConnected || isConnected === null) return null;
+    if (isConnected) return null;
 
     return (
         <View style={styles.banner}>

@@ -19,6 +19,7 @@ const getBaseUrl = () => {
 
 export const api = axios.create({
     baseURL: getBaseUrl(),
+    timeout: 10000, // 10 seconds timeout to fail fast in dead zones
     headers: {
         'Content-Type': 'application/json',
     },
