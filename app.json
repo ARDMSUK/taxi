@@ -14,11 +14,10 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "location",
-          "fetch",
-          "location",
           "fetch"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NFCReaderUsageDescription": "Allow CABAI Driver to use NFC for Tap to Pay contactless payments."
       }
     },
     "android": {
@@ -36,7 +35,8 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.NFC"
       ]
     },
     "web": {
@@ -84,6 +84,12 @@
       "eas": {
         "projectId": "a1551ba3-9aec-488b-959e-3663441ebdf8"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a1551ba3-9aec-488b-959e-3663441ebdf8"
     }
   }
 }

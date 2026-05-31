@@ -11,6 +11,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Audio } from 'expo-av';
+import { useTapToPay } from '../../hooks/useTapToPay';
 
 interface Job {
     id: string;
@@ -36,6 +37,7 @@ export default function HomeScreen() {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'dark'];
     const [zoneName, setZoneName] = useState<string>("Central");
+    const { startTapToPay, loading: tapLoading } = useTapToPay();
 
     async function playSound() {
         try {
@@ -166,6 +168,54 @@ export default function HomeScreen() {
                 text2: 'Failed to update job status on the server.'
             });
             fetchActiveJob();
+        }
+    };
+    
+    const handleJobCompletion = async (jobId: string) => {
+        if (!activeJob) return;
+        if (!isConnected) {
+            Toast.show({
+                type: 'error',
+                text1: 'Offline',
+                text2: 'Cannot complete job status while offline.'
+            });
+            return;
+        }
+
+        try {
+            const configRes = await api.get('/api/mobile/driver/payment/tap-to-pay-config');
+            const tapConfig = configRes.data;
+
+            if (tapConfig && tapConfig.success && tapConfig.enabled) {
+                Alert.alert(
+                    "Complete Ride & Collect Payment",
+                    `Select how you collected the fare (£${activeJob.price.toFixed(2)}):`,
+                    [
+                        {
+                            text: "Cash Payment",
+                            onPress: () => updateJobStatus(jobId, 'CLEARED')
+                        },
+                        {
+                            text: "Tap to Pay (NFC)",
+                            onPress: () => {
+                                startTapToPay(jobId, activeJob.price, () => {
+                                    setActiveJob(null);
+                                    fetchActiveJob();
+                                });
+                            }
+                        },
+                        {
+                            text: "Cancel",
+                            style: "cancel"
+                        }
+                    ]
+                );
+            } else {
+                updateJobStatus(jobId, 'CLEARED');
+            }
+        } catch (error) {
+            console.error("Tap to Pay config check failed, falling back to standard completion:", error);
+            updateJobStatus(jobId, 'CLEARED');
         }
     };
 
@@ -392,15 +442,17 @@ export default function HomeScreen() {
                                             <Text style={styles.buttonText}>Navigate</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity 
-                                            style={[styles.button, { backgroundColor: isConnected ? theme.tint : theme.border }]} 
-                                            onPress={() => updateJobStatus(activeJob.id, 'CLEARED')}
-                                            disabled={!isConnected}
+                                            style={[styles.button, { backgroundColor: isConnected && !tapLoading ? theme.tint : theme.border }]} 
+                                            onPress={() => handleJobCompletion(activeJob.id)}
+                                            disabled={!isConnected || tapLoading}
                                             accessible={true}
                                             accessibilityRole="button"
                                             accessibilityLabel="Complete ride"
                                             accessibilityHint="Complete this job and clear your status"
                                         >
-                                            <Text style={[styles.buttonText, { color: isConnected ? '#000' : theme.icon }]}>Complete</Text>
+                                            <Text style={[styles.buttonText, { color: isConnected && !tapLoading ? '#000' : theme.icon }]}>
+                                                {tapLoading ? 'Processing...' : 'Complete'}
+                                            </Text>
                                         </TouchableOpacity>
                                     </>
                                 )}
