@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Audio } from 'expo-av';
 import { useTapToPay } from '../../hooks/useTapToPay';
+import { useSavedPreferencesStore } from '../../store/savedPreferencesStore';
 
 interface Job {
     id: string;
@@ -38,6 +39,15 @@ export default function HomeScreen() {
     const theme = Colors[colorScheme ?? 'dark'];
     const [zoneName, setZoneName] = useState<string>("Central");
     const { startTapToPay, loading: tapLoading } = useTapToPay();
+
+    const navigationApp = useSavedPreferencesStore((state) => state.navigationApp);
+    const autoAccept = useSavedPreferencesStore((state) => state.autoAccept);
+
+    useEffect(() => {
+        if (activeJob && activeJob.status === 'DISPATCHED' && autoAccept && isConnected) {
+            updateJobStatus(activeJob.id, 'EN_ROUTE');
+        }
+    }, [activeJob, autoAccept, isConnected]);
 
     async function playSound() {
         try {
@@ -264,10 +274,12 @@ export default function HomeScreen() {
 
     const openNavigation = (lat?: number, lng?: number, address?: string) => {
         if (!lat || !lng) {
+            const appleUrl = `maps:0,0?q=${encodeURIComponent(address || '')}`;
+            const googleUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || '')}`;
             const url = Platform.select({
-                ios: `maps:0,0?q=${encodeURIComponent(address || '')}`,
-                android: `geo:0,0?q=${encodeURIComponent(address || '')}`,
-                web: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || '')}`
+                ios: navigationApp === 'apple-maps' ? appleUrl : googleUrl,
+                android: googleUrl,
+                web: googleUrl
             });
             if (url) Linking.openURL(url);
             return;
@@ -279,14 +291,23 @@ export default function HomeScreen() {
             android: `google.navigation:q=${lat},${lng}`,
             web: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
         });
+        const appleMapsUrl = `maps:0,0?q=${lat},${lng}`;
 
-        Linking.canOpenURL(wazeUrl).then(supported => {
-            if (supported && Platform.OS !== 'web') {
-                Linking.openURL(wazeUrl);
-            } else if (googleMapsUrl) {
+        if (navigationApp === 'waze') {
+            Linking.canOpenURL(wazeUrl).then(supported => {
+                if (supported && Platform.OS !== 'web') {
+                    Linking.openURL(wazeUrl);
+                } else if (googleMapsUrl) {
+                    Linking.openURL(googleMapsUrl);
+                }
+            });
+        } else if (navigationApp === 'apple-maps' && Platform.OS === 'ios') {
+            Linking.openURL(appleMapsUrl);
+        } else {
+            if (googleMapsUrl) {
                 Linking.openURL(googleMapsUrl);
             }
-        });
+        }
     };
 
     return (
@@ -294,10 +315,10 @@ export default function HomeScreen() {
             {/* Header */}
             <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
                 <View>
-                    <Image 
-                        source={require('../../assets/images/logo.png')} 
-                        style={{ width: 100, height: 28, resizeMode: 'contain' }} 
-                    />
+                    <Text style={{ color: '#ffffff', fontSize: 24, fontWeight: '900', letterSpacing: 1.5 }}>
+                        CABAI
+                    </Text>
+
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                         <Text style={[styles.callsign, { color: theme.icon }]}>{driver?.callsign}</Text>
                         <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: theme.icon }} />

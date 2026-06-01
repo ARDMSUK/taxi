@@ -9,6 +9,7 @@ import { locationService } from '../services/locationService';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import OfflineBanner from '../components/OfflineBanner';
 import Toast from 'react-native-toast-message';
+import { useSavedPreferencesStore } from '../store/savedPreferencesStore';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -19,10 +20,12 @@ export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
   const { token, initialize, isLoading } = useAuthStore();
+  const initPrefs = useSavedPreferencesStore((state) => state.initialize);
 
   useEffect(() => {
     initialize();
-  }, [initialize]);
+    initPrefs();
+  }, [initialize, initPrefs]);
 
   useEffect(() => {
     if (isLoading) return;
