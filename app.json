@@ -17,7 +17,9 @@
           "fetch"
         ],
         "ITSAppUsesNonExemptEncryption": false,
-        "NFCReaderUsageDescription": "Allow CABAI Driver to use NFC for Tap to Pay contactless payments."
+        "NFCReaderUsageDescription": "Allow CABAI Driver to use NFC for Tap to Pay contactless payments.",
+        "NSBluetoothAlwaysUsageDescription": "Allow CABAI Driver to use Bluetooth to connect to card terminal readers for passenger fare payments.",
+        "NSBluetoothPeripheralUsageDescription": "Allow CABAI Driver to use Bluetooth to connect to card terminal readers for passenger fare payments."
       }
     },
     "android": {
